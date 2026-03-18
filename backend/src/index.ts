@@ -2,6 +2,7 @@ import express from 'express'
 import dotenv from 'dotenv'
 import studentsRouter from './routes/students'
 import enrollmentsRouter from './routes/enrollments'
+import templatesRouter from './routes/templates'
 
 dotenv.config()
 
@@ -17,6 +18,7 @@ app.use((req, res, next) => {
 
 app.use('/api/students', studentsRouter)
 app.use('/api/enrollments', enrollmentsRouter)
+app.use('/api/templates', templatesRouter)
 
 const port = process.env.PORT || 4000
 app.listen(port, () => {
