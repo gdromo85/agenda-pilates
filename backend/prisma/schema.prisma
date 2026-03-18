@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Instructor {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  timezone  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  templates ClassTemplate[]
+  sessions  Session[]
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  enrollments Enrollment[]
+}
+
+model ClassTemplate {
+  id                     String   @id @default(uuid())
+  instructorId           String
+  instructor             Instructor @relation(fields: [instructorId], references: [id])
+  title                  String
+  description            String?
+  isGroup                Boolean  @default(true)
+  capacity               Int?
+  recurrenceRule         String?
+  startTimeLocal         String   // e.g. 18:30
+  durationMinutes        Int
+  active                 Boolean  @default(true)
+  reminderOffsetMinutes  Int      @default(1440)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  sessions               Session[]
+}
+
+model Session {
+  id              String   @id @default(uuid())
+  templateId      String?
+  template        ClassTemplate? @relation(fields: [templateId], references: [id])
+  instructorId    String
+  instructor      Instructor @relation(fields: [instructorId], references: [id])
+  startUtc        DateTime
+  endUtc          DateTime
+  capacitySnapshot Int?
+  status          String   @default("scheduled")
+  location        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([instructorId, startUtc])
+}
+
+model Enrollment {
+  id         String   @id @default(uuid())
+  sessionId  String
+  studentId  String
+  status     String   @default("active")
+  enrolledAt DateTime @default(now())
+  cancelledAt DateTime?
+
+  student Student @relation(fields: [studentId], references: [id])
+  session Session @relation(fields: [sessionId], references: [id])
+
+  @@unique([sessionId, studentId])
+}
+
+model ReminderJob {
+  id             String   @id @default(uuid())
+  sessionId      String
+  studentId      String?
+  scheduledAtUtc DateTime
+  sentAtUtc      DateTime?
+  attempts       Int      @default(0)
+  status         String   @default("pending")
+  providerResponse String?
+
+  session Session @relation(fields: [sessionId], references: [id])
+}
