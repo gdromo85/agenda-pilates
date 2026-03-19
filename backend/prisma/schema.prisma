@@ -83,14 +83,17 @@ model Enrollment {
 }
 
 model ReminderJob {
-  id             String   @id @default(uuid())
-  sessionId      String
-  studentId      String?
+  id String @id @default(uuid())
+  sessionId String
+  studentId String?
   scheduledAtUtc DateTime
-  sentAtUtc      DateTime?
-  attempts       Int      @default(0)
-  status         String   @default("pending")
+  sentAtUtc DateTime?
+  attempts Int @default(0)
+  status String @default("pending")
   providerResponse String?
 
   session Session @relation(fields: [sessionId], references: [id])
+
+  // Unique constraint for idempotent scheduling: one reminder per (session, student, scheduled time)
+  @@unique([sessionId, studentId, scheduledAtUtc])
 }
