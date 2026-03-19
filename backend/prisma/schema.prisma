@@ -61,6 +61,9 @@ model Session {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  enrollments   Enrollment[]   // Relación inversa con Enrollment
+  reminderJobs  ReminderJob[]  // Relación inversa con ReminderJob
+  
   @@unique([instructorId, startUtc])
 }
 
