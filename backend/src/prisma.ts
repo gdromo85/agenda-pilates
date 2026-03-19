@@ -1,10 +1,10 @@
 import { PrismaClient } from '@prisma/client'
 
-// Lazy init singleton for PrismaClient. Under Prisma v7 the constructor
-// validates datasources immediately and will throw if DATABASE_URL is
-// missing. For test runs we provide a tiny no-op stub when NODE_ENV === 'test'
-// and DATABASE_URL is not set so unit tests that only import the module
-// (or call $connect/$disconnect) don't fail during CI/local runs.
+// Note: Prisma v7 requires providing a datasource at runtime. The recommended
+// pattern for PostgreSQL is to pass an adapter created by @prisma/adapter-pg
+// backed by a `pg` Pool. We only construct the adapter when a DATABASE_URL is
+// available. In test runs (NODE_ENV === 'test') with no DATABASE_URL we return
+// a tiny stub so unit tests that import this module don't require a real DB.
 
 let _prisma: PrismaClient | null = null
 
@@ -19,10 +19,23 @@ function createPrismaClient(): PrismaClient {
     return stub
   }
 
-  // Construct the PrismaClient normally. The Prisma config (prisma.config.ts)
-  // will provide the datasource URL at runtime. Avoid passing adapter/datasource
-  // properties here which can conflict with Prisma's validation.
-  return new PrismaClient()
+  const databaseUrl = process.env.DATABASE_URL
+  if (!databaseUrl) {
+    // In non-test environments a DATABASE_URL is required.
+    throw new Error('PrismaClient needs non-empty DATABASE_URL in this environment')
+  }
+
+  // Import adapter and pg only when actually needed to avoid loading extra
+  // modules during lightweight test runs.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { PrismaPg } = require('@prisma/adapter-pg')
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { Pool } = require('pg')
+
+  const pool = new Pool({ connectionString: databaseUrl })
+  const adapter = new PrismaPg(pool)
+
+  return new PrismaClient({ adapter })
 }
 
 export function getPrisma(): PrismaClient {
