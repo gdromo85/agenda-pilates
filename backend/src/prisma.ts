@@ -19,16 +19,9 @@ function createPrismaClient(): PrismaClient {
     return stub
   }
 
-  // If a DATABASE_URL is present and prisma.config.ts isn't being used at
-  // runtime, pass the adapter option which Prisma v7 accepts for direct
-  // database connections.
-  if (process.env.DATABASE_URL) {
-    // adapter is the v7 option to provide a direct DB URL. Cast to any to
-    // avoid strict typing issues.
-    return new (PrismaClient as any)({ adapter: { url: process.env.DATABASE_URL } })
-  }
-
-  // Fallback to default constructor which will attempt to read prisma config
+  // Construct the PrismaClient normally. The Prisma config (prisma.config.ts)
+  // will provide the datasource URL at runtime. Avoid passing adapter/datasource
+  // properties here which can conflict with Prisma's validation.
   return new PrismaClient()
 }
 
