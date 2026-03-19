@@ -19,13 +19,8 @@ function createPrismaClient(): PrismaClient {
     return stub
   }
 
-  // If DATABASE_URL is provided, pass it explicitly to the PrismaClient
-  // constructor so we don't rely on schema-time datasource url (Prisma v7).
-  if (process.env.DATABASE_URL) {
-    // PrismaClient constructor typing is strict; cast to any to pass runtime datasources
-    return new (PrismaClient as any)({ datasources: { db: { url: process.env.DATABASE_URL } } })
-  }
-
+  // Construct the PrismaClient normally. Runtime datasource URL is read
+  // from prisma.config.ts (Prisma v7) which in turn loads process.env.
   return new PrismaClient()
 }
 
