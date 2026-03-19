@@ -19,21 +19,6 @@ const createSchema = z.object({
   reminderOffsetMinutes: z.number().int().positive().optional().default(1440),
 })
 
-// Helper to check overlap: existing.startUtc < newEnd && existing.endUtc > newStart
-async function hasConflict(instructorId: string, startUtcISO: string, endUtcISO: string) {
-  const conflict = await prisma.session.findFirst({
-    where: {
-      instructorId,
-      status: { not: 'cancelled' },
-      AND: [
-        { startUtc: { lt: new Date(endUtcISO) } },
-        { endUtc: { gt: new Date(startUtcISO) } },
-      ],
-    },
-  })
-  return conflict
-}
-
 router.post('/', async (req, res) => {
   const parse = createSchema.safeParse(req.body)
   if (!parse.success) return res.status(400).json({ error: parse.error.errors })
@@ -68,20 +53,38 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'invalid recurrenceRule', details: err.message })
   }
 
-  // For each occurrence, compute endUtc and check conflicts
+  // Check conflicts with a single range query instead of one query per occurrence.
+  // This reduces N database round-trips to 1, dramatically improving performance
+  // when many occurrences are generated (e.g. weekly for 90 days).
   const duration = data.durationMinutes
-  const conflicts: Array<{ start: string; end: string; existingSessionId: string } > = []
-  for (const occ of occurrences) {
-    const startUtc = DateTime.fromISO(occ)
-    const endUtc = startUtc.plus({ minutes: duration })
-    const conflict = await hasConflict(instructorId, startUtc.toISO(), endUtc.toISO())
-    if (conflict) {
-      conflicts.push({ start: startUtc.toISO(), end: endUtc.toISO(), existingSessionId: conflict.id })
-      break
+
+  if (occurrences.length > 0) {
+    const firstStart = DateTime.fromISO(occurrences[0])
+    const lastEnd = DateTime.fromISO(occurrences[occurrences.length - 1]).plus({ minutes: duration })
+
+    const overlapping = await prisma.session.findMany({
+      where: {
+        instructorId,
+        status: { not: 'cancelled' },
+        AND: [
+          { startUtc: { lt: lastEnd.toJSDate() } },
+          { endUtc: { gt: firstStart.toJSDate() } },
+        ],
+      },
+      select: { id: true, startUtc: true, endUtc: true },
+    })
+
+    if (overlapping.length > 0) {
+      return res.status(409).json({
+        error: 'conflict',
+        conflicts: overlapping.map(s => ({
+          start: s.startUtc.toISOString(),
+          end: s.endUtc.toISOString(),
+          existingSessionId: s.id,
+        })),
+      })
     }
   }
-
-  if (conflicts.length > 0) return res.status(409).json({ error: 'conflict', conflicts })
 
   // Create template and Sessions in transaction
   try {
@@ -98,7 +101,6 @@ router.post('/', async (req, res) => {
         active: data.active ?? true,
         reminderOffsetMinutes: data.reminderOffsetMinutes ?? 1440,
       } })
-
       const sessionsData = occurrences.map((occ) => {
         const start = DateTime.fromISO(occ)
         const end = start.plus({ minutes: duration })
@@ -111,7 +113,6 @@ router.post('/', async (req, res) => {
           status: 'scheduled',
         }
       })
-
       // createMany for performance; tolerate some DB that doesn't support it in tests
       await tx.session.createMany({ data: sessionsData })
 
