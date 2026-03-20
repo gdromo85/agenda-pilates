@@ -86,9 +86,18 @@ router.post('/', async (req, res) => {
     }
   }
 
-  // Create template and Sessions in transaction
+  // Create template and Sessions in transaction with advisory lock to
+  // prevent concurrent expansion creating duplicate Session rows.
   try {
     const created = await prisma.$transaction(async (tx) => {
+      // Acquire a transaction-scoped advisory lock based on instructorId.
+      // Use hashtext(instructorId) to derive a stable BIGINT key.
+      // This ensures concurrent requests for the same instructor serialize
+      // here and avoid duplicate session creation.
+      // NOTE: pg_advisory_xact_lock ties the lock lifetime to the DB
+      // transaction, so it is released automatically at commit/rollback.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${instructorId}));`
+
       const template = await tx.classTemplate.create({ data: {
         instructorId,
         title: data.title,
@@ -113,11 +122,38 @@ router.post('/', async (req, res) => {
           status: 'scheduled',
         }
       })
-      // createMany for performance; tolerate some DB that doesn't support it in tests
-      await tx.session.createMany({ data: sessionsData })
+       // createMany for performance; tolerate some DB that doesn't support it in tests
+       await tx.session.createMany({ data: sessionsData })
 
       return { template, createdSessions: sessionsData.length }
     })
+
+    // After transaction commit, create ReminderJob rows (idempotent) and
+    // enqueue delayed BullMQ jobs if Redis is configured. We do this
+    // outside the DB transaction to avoid mixing external queue side-effects
+    // with DB rollback semantics.
+    try {
+      // Retrieve sessions we just created to compute reminder times.
+      // We query by template id returned above.
+      const sessions = await prisma.session.findMany({ where: { templateId: created.template.id } })
+
+      const reminderOffset = created.template.reminderOffsetMinutes ?? 1440
+      const { createReminderForSession } = await import('../services/reminderService')
+      for (const s of sessions) {
+        // createReminderForSession is idempotent: it ensures no duplicate
+        // ReminderJob for the same sessionId + studentId + scheduledAtUtc
+        // will be created when called multiple times.
+        // For now we create a per-session (studentId = null) reminder job.
+        // Student-specific reminders will be created when enrollments are added.
+        // eslint-disable-next-line no-await-in-loop
+        await createReminderForSession(prisma, s, reminderOffset)
+      }
+    } catch (err: any) {
+      // Best effort: don't fail the API if scheduling reminders fails.
+      // Log and continue.
+      // eslint-disable-next-line no-console
+      console.error('failed to schedule reminders after template creation', err)
+    }
 
     res.status(201).json(created)
   } catch (err: any) {

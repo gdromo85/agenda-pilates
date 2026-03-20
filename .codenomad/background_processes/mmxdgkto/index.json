@@ -1,0 +1,13 @@
+[
+  {
+    "id": "proc_2026-03-19T1243_ad6240",
+    "workspaceId": "mmxdgkto",
+    "title": "backend-dev-server",
+    "command": "npm run dev --prefix backend",
+    "cwd": "D:\\GitHub\\agenda-pilates",
+    "status": "running",
+    "pid": 4424,
+    "startedAt": "2026-03-19T12:43:22.192Z",
+    "outputSizeBytes": 0
+  }
+]

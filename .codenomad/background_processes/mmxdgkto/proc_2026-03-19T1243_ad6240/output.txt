@@ -1,0 +1,22 @@
+
+> agenda-pilates-backend@0.0.1 dev
+> ts-node-dev --respawn --transpile-only src/index.ts
+
+[INFO] 09:43:33 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.1, typescript ver. 5.9.3)
+[dotenv@17.3.1] injecting env (4) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+Server listening on 4000
+TypeError: createPgAdapter is not a function
+    at createPrismaClient (D:\GitHub\agenda-pilates\backend\src\prisma.ts:36:19)
+    at getPrisma (D:\GitHub\agenda-pilates\backend\src\prisma.ts:42:27)
+    at Object.get (D:\GitHub\agenda-pilates\backend\src\prisma.ts:50:20)
+    at D:\GitHub\agenda-pilates\backend\src\routes\templates.ts:47:35
+    at Layer.handle [as handle_request] (D:\GitHub\agenda-pilates\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\GitHub\agenda-pilates\backend\node_modules\express\lib\router\route.js:144:13)
+    at Route.dispatch (D:\GitHub\agenda-pilates\backend\node_modules\express\lib\router\route.js:114:3)
+    at Layer.handle [as handle_request] (D:\GitHub\agenda-pilates\backend\node_modules\express\lib\router\layer.js:95:5)
+    at D:\GitHub\agenda-pilates\backend\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (D:\GitHub\agenda-pilates\backend\node_modules\express\lib\router\index.js:346:12)
+[ERROR] 09:45:03 TypeError: createPgAdapter is not a function
+[INFO] 09:47:41 Restarting: D:\GitHub\agenda-pilates\backend\src\prisma.ts has been modified
+[dotenv@17.3.1] injecting env (4) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+Server listening on 4000
