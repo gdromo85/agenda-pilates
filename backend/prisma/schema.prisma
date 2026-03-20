@@ -17,6 +17,7 @@ model Instructor {
   updatedAt DateTime @updatedAt
   templates ClassTemplate[]
   sessions  Session[]
+  userAuth  UserAuth?
 }
 
 model Student {
@@ -96,4 +97,13 @@ model ReminderJob {
 
   // Unique constraint for idempotent scheduling: one reminder per (session, student, scheduled time)
   @@unique([sessionId, studentId, scheduledAtUtc])
+}
+
+model UserAuth {
+  id           String @id @default(uuid())
+  instructorId String @unique
+  username     String @unique
+  passwordHash String
+
+  instructor Instructor @relation(fields: [instructorId], references: [id])
 }
