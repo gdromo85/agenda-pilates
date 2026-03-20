@@ -23,13 +23,13 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const data = await res.json()
-        setError(data.error ?? 'Login failed')
+        setError(data.error ?? 'Credenciales inválidas')
         return
       }
 
       navigate('/')
     } catch {
-      setError('Network error')
+      setError('Error de conexión')
     } finally {
       setLoading(false)
     }
@@ -38,8 +38,19 @@ export default function LoginPage() {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h2>Agenda Pilates</h2>
-        <p>Iniciar sesión</p>
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{
+            width: '56px', height: '56px', borderRadius: '16px',
+            background: 'linear-gradient(135deg, #EC4899, #8B5CF6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 12px', fontSize: '1.5rem',
+          }}>
+            📅
+          </div>
+          <h2>Agenda Pilates</h2>
+          <p>Panel de administración</p>
+        </div>
+
         <form onSubmit={handleLogin}>
           <div className="form-group">
             <label>Usuario</label>
@@ -49,6 +60,7 @@ export default function LoginPage() {
               onChange={e => setUsername(e.target.value)}
               required
               autoFocus
+              placeholder="Tu usuario"
             />
           </div>
           <div className="form-group">
@@ -58,11 +70,19 @@ export default function LoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
+              placeholder="Tu contraseña"
             />
           </div>
-          {error && <div className="error">{error}</div>}
-          <button type="submit" disabled={loading}>
-            {loading ? 'Entrando...' : 'Ingresar'}
+
+          {error && <div className="alert alert-error" style={{ marginTop: '8px', marginBottom: '0' }}>{error}</div>}
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={loading}
+            style={{ width: '100%', justifyContent: 'center', marginTop: '16px', padding: '11px' }}
+          >
+            {loading ? <><span className="spinner" /> Entrando...</> : 'Iniciar sesión'}
           </button>
         </form>
       </div>
