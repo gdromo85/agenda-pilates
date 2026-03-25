@@ -5,6 +5,10 @@ import { DateTime } from 'luxon'
  * Create a ReminderJob for a session (studentId nullable) in an idempotent way.
  * Uses unique constraint on (sessionId, studentId, scheduledAtUtc) implemented
  * via a SELECT ... FOR NO KEY UPDATE / conditional insert pattern.
+ *
+ * Provider note (MVP): current delivery provider is email (SendGrid).
+ * TODO(whatsapp-provider): introduce provider abstraction to support WhatsApp
+ * (e.g. Twilio) without coupling reminder orchestration to email transport.
  */
 export async function createReminderForSession(prisma: PrismaClient, session: Session, offsetMinutes: number) {
   const scheduledAt = DateTime.fromJSDate(session.startUtc).minus({ minutes: offsetMinutes }).toUTC().toJSDate()

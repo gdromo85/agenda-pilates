@@ -29,6 +29,7 @@ model Student {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   enrollments Enrollment[]
+  waitlistEntries WaitlistEntry[]
 }
 
 model ClassTemplate {
@@ -65,6 +66,7 @@ model Session {
 
   enrollments   Enrollment[]   // Relación inversa con Enrollment
   reminderJobs  ReminderJob[]  // Relación inversa con ReminderJob
+  waitlistEntries WaitlistEntry[]
   
   @@unique([instructorId, startUtc])
 }
@@ -81,6 +83,20 @@ model Enrollment {
   session Session @relation(fields: [sessionId], references: [id])
 
   @@unique([sessionId, studentId])
+}
+
+model WaitlistEntry {
+  id        String   @id @default(uuid())
+  sessionId String
+  studentId String
+  position  Int
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([sessionId, studentId])
+  @@index([sessionId, position])
 }
 
 model ReminderJob {

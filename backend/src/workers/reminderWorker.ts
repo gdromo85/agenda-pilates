@@ -1,7 +1,11 @@
 import { Worker } from 'bullmq'
 import { getRedisConnection } from './bullClient'
 import prisma from '../prisma'
-import sgMail from '@sendgrid/mail'
+import { sendNotificationEmail } from '../services/notificationSender'
+
+// Provider note (MVP): reminder worker currently sends email notifications.
+// TODO(whatsapp-provider): extract provider interface and add WhatsApp/Twilio
+// implementation while keeping queue/job semantics unchanged.
 
 export function startWorker() {
   const redis = getRedisConnection()
@@ -30,12 +34,13 @@ export function startWorker() {
     }
 
     try {
-      const apiKey = process.env.SENDGRID_API_KEY
-      if (!apiKey) throw new Error('SendGrid API key not configured')
-      sgMail.setApiKey(apiKey)
-      const res = await sgMail.send(msg)
+      await sendNotificationEmail({
+        to: msg.to,
+        subject: msg.subject,
+        text: msg.text,
+      })
 
-      await prisma.reminderJob.update({ where: { id: reminderJobId }, data: { status: 'sent', sentAtUtc: new Date(), providerResponse: JSON.stringify(res) } })
+      await prisma.reminderJob.update({ where: { id: reminderJobId }, data: { status: 'sent', sentAtUtc: new Date(), providerResponse: 'sent-via-email-provider' } })
     } catch (err: any) {
       // Log provider response and mark failed or leave pending for retries
       await prisma.reminderJob.update({ where: { id: reminderJobId }, data: { providerResponse: err.message } })

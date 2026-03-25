@@ -1,9 +1,11 @@
 import React, { useState, useEffect, createContext, useContext } from 'react'
-import { BrowserRouter, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom'
 import StudentsPage from './pages/StudentsPage'
 import TemplatesPage from './pages/TemplatesPage'
 import CalendarPage from './pages/CalendarPage'
 import LoginPage from './pages/LoginPage'
+import DashboardPage from './pages/DashboardPage'
+import NotificationsPage from './pages/NotificationsPage'
 import './styles.css'
 
 interface AuthUser {
@@ -40,9 +42,11 @@ function Layout({ children }: { children: React.ReactNode }) {
       <nav className="nav">
         <h1>Agenda Pilates - Admin</h1>
         <div className="links">
-          <Link to="/">Alumnos</Link>
-          <Link to="/templates">Clases</Link>
-          <Link to="/calendar">Calendario</Link>
+          <NavLink to="/dashboard" className={({ isActive }) => (isActive ? 'active' : undefined)}>Dashboard</NavLink>
+          <NavLink to="/students" className={({ isActive }) => (isActive ? 'active' : undefined)}>Alumnos</NavLink>
+          <NavLink to="/templates" className={({ isActive }) => (isActive ? 'active' : undefined)}>Clases</NavLink>
+          <NavLink to="/calendar" className={({ isActive }) => (isActive ? 'active' : undefined)}>Calendario</NavLink>
+          <NavLink to="/notifications" className={({ isActive }) => (isActive ? 'active' : undefined)}>Notificaciones</NavLink>
         </div>
         <div className="nav-right">
           <span className="user-info">{user?.username}</span>
@@ -86,9 +90,12 @@ function AppRoutes() {
     <AuthContext.Provider value={{ user, loading, logout, refetch: checkAuth }}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<AuthGuard><Layout><StudentsPage /></Layout></AuthGuard>} />
+        <Route path="/" element={<AuthGuard><Layout><DashboardPage /></Layout></AuthGuard>} />
+        <Route path="/dashboard" element={<AuthGuard><Layout><DashboardPage /></Layout></AuthGuard>} />
+        <Route path="/students" element={<AuthGuard><Layout><StudentsPage /></Layout></AuthGuard>} />
         <Route path="/templates" element={<AuthGuard><Layout><TemplatesPage /></Layout></AuthGuard>} />
         <Route path="/calendar" element={<AuthGuard><Layout><CalendarPage /></Layout></AuthGuard>} />
+        <Route path="/notifications" element={<AuthGuard><Layout><NotificationsPage /></Layout></AuthGuard>} />
       </Routes>
     </AuthContext.Provider>
   )

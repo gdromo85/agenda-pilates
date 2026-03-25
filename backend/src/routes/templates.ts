@@ -163,4 +163,119 @@ router.post('/', async (req, res) => {
   }
 })
 
+const updateSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  isGroup: z.boolean().optional(),
+  capacity: z.number().int().positive().optional(),
+  active: z.boolean().optional(),
+  reminderOffsetMinutes: z.number().int().positive().optional(),
+})
+
+router.get('/', async (req, res) => {
+  const instructorId = (req as any).instructorId
+  if (!instructorId) return res.status(401).json({ error: 'unauthenticated' })
+
+  try {
+    const templates = await prisma.classTemplate.findMany({
+      where: { instructorId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { sessions: true } },
+      },
+    })
+
+    res.json(templates)
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error(err)
+    res.status(500).json({ error: 'internal' })
+  }
+})
+
+router.get('/:id', async (req, res) => {
+  const instructorId = (req as any).instructorId
+  if (!instructorId) return res.status(401).json({ error: 'unauthenticated' })
+
+  try {
+    const template = await prisma.classTemplate.findFirst({
+      where: { id: req.params.id, instructorId },
+      include: {
+        sessions: {
+          where: { startUtc: { gt: new Date() } },
+          orderBy: { startUtc: 'asc' },
+          include: {
+            _count: { select: { enrollments: true } },
+          },
+        },
+      },
+    })
+
+    if (!template) return res.status(404).json({ error: 'not found' })
+
+    res.json(template)
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error(err)
+    res.status(500).json({ error: 'internal' })
+  }
+})
+
+router.put('/:id', async (req, res) => {
+  const instructorId = (req as any).instructorId
+  if (!instructorId) return res.status(401).json({ error: 'unauthenticated' })
+
+  const parse = updateSchema.safeParse(req.body)
+  if (!parse.success) return res.status(400).json({ error: parse.error.errors })
+
+  try {
+    const existing = await prisma.classTemplate.findFirst({
+      where: { id: req.params.id, instructorId },
+    })
+
+    if (!existing) return res.status(404).json({ error: 'not found' })
+
+    const updated = await prisma.classTemplate.update({
+      where: { id: existing.id },
+      data: parse.data,
+    })
+
+    res.json(updated)
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error(err)
+    res.status(500).json({ error: 'internal' })
+  }
+})
+
+router.delete('/:id', async (req, res) => {
+  const instructorId = (req as any).instructorId
+  if (!instructorId) return res.status(401).json({ error: 'unauthenticated' })
+
+  try {
+    const existing = await prisma.classTemplate.findFirst({
+      where: { id: req.params.id, instructorId },
+    })
+
+    if (!existing) return res.status(404).json({ error: 'not found' })
+
+    await prisma.$transaction([
+      prisma.classTemplate.update({
+        where: { id: existing.id },
+        data: { active: false },
+      }),
+      prisma.session.updateMany({
+        where: { templateId: existing.id, startUtc: { gt: new Date() } },
+        data: { status: 'cancelled' },
+      }),
+    ])
+
+    res.json({ ok: true })
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error(err)
+    res.status(500).json({ error: 'internal' })
+  }
+})
+
 export default router
